@@ -1,0 +1,59 @@
+function [vectout,nb_echantillon,err] = comp(vectin,indice,fs)
+class()
+    % function [vectout,nb_echantillon,err] = comp(vectin,indice,fs)
+    % =====================================================================
+    % IN
+    % vectin (vecteur) : Vector containing a zigbee communication
+    % indice (interger) : Index of the beginning of the preamble
+    % fs (float): Sampling frequency with which the signals
+	% Zigbee were sampled
+    %
+    % OUT
+    % vectout (vecteur) : vecteur contenant le préambule compensé
+    % nb_echantillon(integer) :Number of samples required for the
+	% preamble
+    % err (vecteur) : Vector containing the vectin error in relation to the
+	% Reference signal
+    %
+    % comp(vectin,indice,fs) Performs phase compensation vi
+	% Approximation of a polynomial of order 1 (y = ax + b) to compensate
+    % Phase error caused by channel
+    % =====================================================================
+    % Author: Mathieu Lévesque (c)
+    % Laboratory : LRTS - Laval University
+    % Last Modification: 15/08/2016
+    
+    % The potential recovery errors of preambles of
+	% Bug the code by calculating the power in the signal.
+    if norm(vectin,2) < 70
+        vectout = []; nb_echantillon = 0; err = [];
+        return;
+    end
+    
+    % Reference phase generation
+    if nargin == 1
+            [phase_ref,~] = gen_phase(fs);
+    else
+            [phase_ref,~,~,fs] = gen_phase(); clear signal;
+    end
+ 
+    % Recuperation of the preamble
+    t_preambule = 128e-6; nb_echantillon = t_preambule * fs - 1;
+    preambule = vectin(indice:indice+nb_echantillon);
+    phase = unwrap(angle(preambule));
+    
+    % Calculation of the error
+    err = phase_ref' - phase;
+    
+    % Approximation of the error polynomial
+    polynome = polyfit((1:length(err)),err',1);
+    
+    % Generation of phase compensation
+    
+    compensation = polynome(1).*(1:length(preambule)) + polynome(2);
+    
+    % The preamble
+    
+    vectout = preambule .* exp(1i.*compensation');
+    
+end
